@@ -1,0 +1,272 @@
+
+################################################################################################
+### Recipricol Best Hit Assignment
+lower e score is better (escore, evalue, e-value)
+sort by protien name and then e value
+sort two columns and pull out the best hits
+
+read in a whole set of blast hits and assay single best hit or multiple
+
+
+cat H_to_zfishdb.blastp | sort -k1,1 -k11,11g| head -n 100
+
+to sort globally to get sorted by two columns and then created new files from this.
+For this we now get the smallest values at the top making it easier to go through. 
+
+File locations
+/projects/bgmp/shared/Bi623/PS7_RBH_Bi623/H_to_zfishdb.blastp/
+/projects/bgmp/shared/Bi623/PS7_RBH_Bi623/Z_to_homodb.blastp/
+
+
+ ./rbh.py -h /projects/bgmp/shared/Bi623/PS7_RBH_Bi623/H_to_zfishdb.blastp -f /projects/bgmp/shared/Bi623/PS7_RBH_Bi623/Z_to_homodb.blastp
+
+
+#############################################################
+8/24
+/projects/bgmp/shared/Bi623/from_Leslie
+where we will get our biomart files that we will need 
+
+
+./rbh.py -p H_to_zfishdb.blastp -f Z_to_homodb.blastp  -o Human_BioMart.tsv -t Zebrafish_BioMart.tsv
+for quick input
+
+There is still issues with the argparse function. It doesn't seem to want to work. I don't know what is going on.
+
+The rest of the files are done. The initial biomart file that was saved didn't work to achieve the correct number of 
+lines. The issue was that the biomart file was not up to date and therefore we needed to grab a different one. 
+Other than that all the lines are working except for the argparse and we need to finishing up the assignment. 
+
+##############################################################################################
+8/25
+
+The reason that the argparse wasn't working was because the parse we used wasn't appropriate. When using argparse
+-h should not be used to identify anything as it is meant to call for help. But using it in combination with something else will 
+make it work as shown in demultiplexing. 
+
+
+################################################################################################
+for bgmp specific so that we can have an interavtive node.
+
+srun --account=bgmp --partition=bgmp --nodes=1 --ntasks-per-node=1 --time=2:00:00 --cpus-per-task=1 --pty bash
+
+
+################################################################################################
+#### QAA (9.2.2022)
+We are using fastQC to take a look at our fles and see how good it looks
+
+Peter   11_2H_both_S9_L008      29_4E_fox_S21_L008 are my files for the assignment
+
+
+/projects/bgmp/shared/2017_sequencing/demultiplexed
+/projects/bgmp/shared/2017_sequencing/demultiplexed/11_2H_both_S9_L008_R1_001.fastq.gz
+/projects/bgmp/shared/2017_sequencing/demultiplexed/11_2H_both_S9_L008_R2_001.fastq.gz
+
+/projects/bgmp/shared/2017_sequencing/demultiplexed/29_4E_fox_S21_L008_R1_001.fastq.gz
+/projects/bgmp/shared/2017_sequencing/demultiplexed/29_4E_fox_S21_L008_R2_001.fastq.gz
+
+to install:
+module spider FastQC to see help on the module we want to used
+module load fastqc/0.11.5 
+is what we used to install it with module load
+use -h to get help
+use -o to get the output files placed in your given directory
+
+for ease of speed, copy and paste these things into to make it easier to run fastqc
+
+fastqc /projects/bgmp/shared/2017_sequencing/demultiplexed/11_2H_both_S9_L008_R1_001.fastq.gz -o .
+fastqc /projects/bgmp/shared/2017_sequencing/demultiplexed/11_2H_both_S9_L008_R2_001.fastq.gz -o .
+
+fastqc /projects/bgmp/shared/2017_sequencing/demultiplexed/29_4E_fox_S21_L008_R1_001.fastq.gz -o .
+fastqc /projects/bgmp/shared/2017_sequencing/demultiplexed/29_4E_fox_S21_L008_R2_001.fastq.gz -o .
+
+After this we are going to run the files through to our script for demultiplexing where we
+will run the files onto our python script that gets you the average for each bp position
+
+```
+The two are similar. They both have very similar lines as well as dips. This is good because
+it shows that the program that I had written worked for the files. With the distibutions being the same 
+the time run for each of them is different. My script ran long and get less files than that of fastQC. fastqc
+output out more files with more information.
+
+```
+create a new conda environment
+conda create -n QAA to create a new environment
+
+to activate the environment you have
+conda activate QAA
+then conda install cutadapt (4.1)
+then conda install Trimmomatic (0.39)
+
+then check your you have the right version using <file> -- version
+
+for my sanity i went and clicked on the cheat to be able to figure out the 
+adapter sequences
+
+https://cutadapt.readthedocs.io/en/stable/guide.html
+
+R1: AGATCGGAAGAGCACACGTCTGAACTCCAGTCA
+R2: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+
+is the function line we need to run
+cutadapt -a <adatpers> -o <output.fastq.gz> <input.fastq.gz>
+if you add in the .gz it will take a bit longer. but then your files will be zipped making it easier. 
+the time taken doesn't take as long, maybe 3-5 min longer
+
+zcat 11_2H_both_S9_L008_R1_001.fastq.gz| grep "^AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"| wc
+which got me some hits
+zcat 11_2H_both_S9_L008_R1_001.fastq.gz| grep "^AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT" | wc
+which got no hits
+
+cutadapt -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA -o both_s9_R1.gz /projects/bgmp/shared/2017_sequencing/demultiplexed/11_2H_both_S9_L008_R1_001.fastq.gz
+=== Summary ===
+
+Total reads processed:              17,919,193
+Reads with adapters:                   874,706 (4.9%)
+Reads written (passing filters):    17,919,193 (100.0%)
+
+Total basepairs processed: 1,809,838,493 bp
+Total written (filtered):  1,801,756,130 bp (99.6%)
+
+cutadapt -a AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT -o both_s9_R2.gz /projects/bgmp/shared/2017_sequencing/demultiplexed/11_2H_both_S9_L008_R2_001.fastq.gz
+=== Summary ===
+
+Total reads processed:              17,919,193
+Reads with adapters:                 1,016,991 (5.7%)
+Reads written (passing filters):    17,919,193 (100.0%)
+
+Total basepairs processed: 1,809,838,493 bp
+Total written (filtered):  1,801,193,039 bp (99.5%)
+
+cutadapt -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA -o fox_s21_R1.gz /projects/bgmp/shared/2017_sequencing/demultiplexed/29_4E_fox_S21_L008_R1_001.fastq.gz
+=== Summary ===
+
+Total reads processed:               4,827,433
+Reads with adapters:                   361,886 (7.5%)
+Reads written (passing filters):     4,827,433 (100.0%)
+
+Total basepairs processed:   487,570,733 bp
+Total written (filtered):    482,046,570 bp (98.9%)
+
+cutadapt -a AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT -o fox_s21_R2.gz /projects/bgmp/shared/2017_sequencing/demultiplexed/29_4E_fox_S21_L008_R2_001.fastq.gz
+=== Summary ===
+
+Total reads processed:               4,827,433
+Reads with adapters:                   400,819 (8.3%)
+Reads written (passing filters):     4,827,433 (100.0%)
+
+Total basepairs processed:   487,570,733 bp
+Total written (filtered):    481,884,323 bp (98.8%)
+
+
+Trimmomatic 
+
+to tell if it is a paired end read look at the headers. The 1 and 2 should tell you
+@K00337:83:HJKJNBBXX:8:1101:2443:1191 1:N:0:NTAGCTCA+NGAGCTAG
+@K00337:83:HJKJNBBXX:8:1101:2443:1191 2:N:0:NTAGCTCA+NGAGCTAG
+
+http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf
+
+for our parameters
+LEADING:3 TRAILING:3 SLIDINGWINDOW:5:15 MINLEN:35
+there are 2 input files and then four output files
+trimmomatic PE <input1> <input2> <output1 forward pair> <output2 forward unpaired> <output3 reverse paired> <output4 reverse unpaired> LEADING:3 TRAILING:3 SLIDINGWINDOW:5:15 MINLEN:35
+
+trimmomatic PE both_s9_R1.gz both_s9_R2.gz forwar_pair_both.gz forward_unpaired_both.gz reverse_pair_both.gz reverse_unpaired_both.gz LEADING:3 TRAILING:3 SLIDINGWINDOW:5:15 MINLEN:35
+
+trimmomatic PE fox_s21_R1.gz fox_s21_R2.gz forwar_pair_fox.gz forward_unpaired_fox.gz reverse_pair_fox.gz reverse_unpaired_fox.gz LEADING:3 TRAILING:3 SLIDINGWINDOW:5:15 MINLEN:35
+
+Now we are going to use python in order to create a graph  to show the length distribution of the files
+
+./read_length_distribution.py -o forwar_pair_both.gz -t reverse_pair_both.gz 
+./read_length_distribution.py -o forwar_pair_fox.gz -t reverse_pair_fox.gz 
+
+Both graphs have been created and overlayed
+
+``` answer to question
+R1 should be less trimmed because it is processed earlier. The longer the sequence is on the seqeuncer for, the more degraded it becomes.
+So R2 should me trimmed more than R1.
+
+```
+for the next part we need to download the files. To get the GTF files from biomart
+go to ensembl
+click download 
+then on the left, click on FTP download
+
+the other way we did it was scroll down and click on the species
+click on download dna sequence to get one part of the files
+then on the other side of the same page you can click on download fasta 
+
+###################################################################################################################################
+### Running Star (9.6.2022)
+
+Set up star align and the star program so that you have your set up
+
+/usr/bin/time -v STAR \
+--runThreadN 8 \
+--runMode genomeGenerate \
+--genomeDir "/projects/bgmp/ppham4/bioinfo/Bi623/work/Star/mouse.107.STAR" \                                  ### the directory that you want to output your files to
+--genomeFastaFiles "/projects/bgmp/ppham4/bioinfo/Bi623/work/Mus_musculus.GRCm39.dna.primary_assembly.fa" \   ### The assembly that you are matching with
+--sjdbGTFfile "/projects/bgmp/ppham4/bioinfo/Bi623/work/Mus_musculus.GRCm39.107.gtf"                          ### The gtf file we are porting it into
+
+conda install
+star
+numpy
+pysam 
+matplotlib
+htseq 
+
+run the files and this took me roughly 10 min for it to fully run and complete. 
+
+For the second part of star:
+
+/usr/bin/time -v STAR --runThreadN 8 --runMode alignReads \
+    --outFilterMultimapNmax 3 \
+    --outSAMunmapped Within KeepPairs \
+    --alignIntronMax 1000000 --alignMatesGapMax 1000000 \
+    --readFilesCommand zcat \
+    --readFilesIn "/projects/bgmp/ppham4/bioinfo/Bi623/work/cutadapt_trimmomatic/forwar_pair_both.gz" "/projects/bgmp/ppham4/bioinfo/Bi623/work/cutadapt_trimmomatic/reverse_pair_both.gz" \   # this is your two files that you have created forward and reverse
+    --genomeDir "/projects/bgmp/ppham4/bioinfo/Bi623/work/Star/mouse.107.STAR" \                                                                                                               # The directory that you are pulling all your files from. The first part should create this directory and you are using the create fiels from it
+    --outFileNamePrefix align/star_alignment                     # what you want to name it
+    ### this is tabbed in so that it is easily read.
+
+forwar_pair_both.gz and reverse_pair_both.gz
+mapped is 33637730
+unmapped is 1293496
+
+forwar_pair_both.gz and reverse_pair_both.gz
+mapped is 8883012
+unmapped is 260796
+
+##############################################################################################################################
+### htseq (9.6.2022)
+
+htseq is now needed to be used. Will read lines to a feature
+
+https://htseq.readthedocs.io/en/release_0.11.1/count.html
+
+htseq-count --stranded=yes <input sam file that has been put through STAR> <GTF file that you used>
+
+htseq-count --stranded=yes /projects/bgmp/ppham4/bioinfo/Bi623/work/align_fox/foxAligned.out.sam /projects/bgmp/ppham4/bioinfo/Bi623/work/Mus_musculus.GRCm39.107.gtf > fox_align_output
+
+htseq-count --stranded=reverse /projects/bgmp/ppham4/bioinfo/Bi623/work/align_fox/foxAligned.out.sam /projects/bgmp/ppham4/bioinfo/Bi623/work/Mus_musculus.GRCm39.107.gtf > fox_reverse_output
+
+htseq-count --stranded=yes /projects/bgmp/ppham4/bioinfo/Bi623/work/align/star_alignmentAligned.out.sam /projects/bgmp/ppham4/bioinfo/Bi623/work/Mus_musculus.GRCm39.107.gtf > both_stranded_output
+
+htseq-count --stranded=reverse /projects/bgmp/ppham4/bioinfo/Bi623/work/align/star_alignmentAligned.out.sam /projects/bgmp/ppham4/bioinfo/Bi623/work/Mus_musculus.GRCm39.107.gtf > both_reverse_output
+
+cat both_reverse_output |grep  '^ENSM'| awk '{sum+=$2} END {print sum}'
+
+yes-both_s9 had 602,072 matches
+reverse-both_s9 had 13,819,257 matches
+
+yes-fox had  189,376 matches
+reverse-fox had 3,860,217 matches
+
+################################################################################################
+### R notes
+
+This stuff is hard. some good things to have is a directory you make everything in and work out of. Each assignment would need to have their own personal 
+folder to make this easier and work.
+When installing new packages makes sure to put them in quotes
+
+
